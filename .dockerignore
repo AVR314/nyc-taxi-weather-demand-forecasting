@@ -1,0 +1,17 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+.venv
+__pycache__
+.pytest_cache
+.mypy_cache
+.ruff_cache
+data
+datasets
+*.csv
+*.tsv
+*.parquet
+*.avro
+*.orc
