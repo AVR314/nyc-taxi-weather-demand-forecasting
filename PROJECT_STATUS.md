@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Project governance and requirement tracking. Actual project implementation has not started.
+Phase 1 data feasibility is complete and validated. Infrastructure and pipeline implementation have not started.
 
 ## Completed and Validated
 
@@ -11,6 +11,12 @@ Project governance and requirement tracking. Actual project implementation has n
 - WSL 2 and Ubuntu validated.
 - Docker Engine and Docker Compose validated with the WSL 2 backend.
 - Permanent governance and traceability documents established.
+- Official January 2025 Yellow Taxi Parquet profiled without cleaning: 3,475,226 rows and 59,158,238 bytes.
+- Official taxi lookup and geographic archive located; all observed pickup IDs were valid lookup IDs.
+- All 12 official 2025 Yellow Taxi files verified by HEAD request; calendar year 2025 approved as the study period.
+- Open-Meteo observed, stitched historical-forecast, and exact ECMWF single-run JSON endpoints validated for January 2025.
+- NASA POWER hourly JSON validated as an observed/reanalysis comparison source.
+- Five-point NYC weather strategy and a 95% demand-coverage Taxi Zone selection rule approved from measured evidence.
 
 ## Open Blockers
 
@@ -18,14 +24,10 @@ Project governance and requirement tracking. Actual project implementation has n
 
 ## Decisions Awaiting Evidence
 
-- Exact taxi date range.
-- Exact weather provider.
-- Availability and choice of historical observed versus historical forecast weather.
-- Exact weather variables.
-- Final Taxi Zone subset based on measured coverage and sparsity.
+- Exact Taxi Zone IDs after the approved rule is applied to the full 2025 period.
 - Final ML algorithms after baselines and feasibility evidence.
 - Whether Elasticsearch and Kibana remain in the final architecture.
 
 ## Next Action
 
-Await explicit authorization to begin Phase 1 feasibility analysis. Do not begin implementation or download data before that authorization.
+Await explicit authorization for the next phase. Do not start infrastructure, bulk data acquisition, Spark ETL, feature engineering, or ML before that authorization.
