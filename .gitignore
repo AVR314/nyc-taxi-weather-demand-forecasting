@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# Spark temporary and output files
+spark-warehouse/
+metastore_db/
+derby.log
+checkpoints/
+output/
+*.crc
+
+# Large local datasets
+data/
+datasets/
+*.csv
+*.tsv
+*.parquet
+*.avro
+*.orc
+
+# IDEs and editors
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
