@@ -198,3 +198,25 @@ The fixed `America/New_York` half-open splits are train `[2025-01-01,
 data duplication, or ML training occurs. The manifest is written to
 `s3a://bigdata/silver/manifests/chronological_splits_baselines_report.json`;
 measured results are in `docs/chronological_splits_baselines_validation.md`.
+
+## Phase 5C ML candidate selection
+
+Run the focused tests:
+
+```powershell
+docker compose --env-file .env run --rm --no-deps spark-master /opt/spark/bin/spark-submit --master "local[2]" /opt/project/tests/test_ml_selection.py
+```
+
+Then train and select ML candidates on train/validation only:
+
+```powershell
+docker compose --env-file .env up --detach minio minio-init spark-master spark-worker
+docker compose --env-file .env exec -T spark-master /opt/spark/bin/spark-submit --master spark://spark-master:7077 --driver-memory 2g --executor-memory 2g --conf spark.cores.max=2 /opt/project/src/ml_selection/job.py
+```
+
+Regularized Linear Regression and Gradient-Boosted Trees are trained and
+scored separately per horizon (1h/3h/6h) on feature sets A (demand/calendar
+plus Taxi Zone identity) and B (A plus approved weather). Preprocessing is
+fit on train only; test partitions are never read. The manifest is written
+to `s3a://bigdata/silver/manifests/ml_candidate_selection_report.json`;
+measured results are in `docs/ml_selection_validation.md`.

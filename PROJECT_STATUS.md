@@ -2,9 +2,8 @@
 
 ## Current Phase
 
-Phase 5B chronological splits and non-ML forecast baselines are complete and
-validated. ML training, Gold outputs, Elasticsearch, and Kibana have not
-started.
+Phase 5C ML candidate selection is complete and validated on train/validation
+only. Gold outputs, Elasticsearch, and Kibana have not started.
 
 ## Completed and Validated
 
@@ -51,6 +50,10 @@ started.
 - Validation overall MAE/RMSE are 39.748108/75.011838 for persistence, 21.330961/44.829499 for previous-day seasonal naive, and 15.122268/29.725824 for previous-week seasonal naive.
 - Previous-week seasonal naive was selected using validation MAE only. Its reported test MAE/RMSE are 20.991755/43.118488 and were not used for selection.
 - All baseline source timestamps were at or before cutoff, target demand was not a predictor, and seven focused Phase 5B Spark tests passed.
+- Phase 5C trained regularized Linear Regression and Gradient-Boosted Trees on train only and scored on validation only (409,590 train / 108,336 validation rows per horizon, identical for feature sets A and B, zero test rows read).
+- The selected model at every horizon is regularized Linear Regression on feature set A (demand/calendar + zone, no weather): validation MAE/RMSE 12.326950/22.095700 (1h), 14.180445/26.519300 (3h), 14.457571/27.449900 (6h), each beating the frozen previous-week baseline (MAE 15.122268) by 18.48%, 6.23%, and 4.40% respectively.
+- Measured weather A/B deltas were negative (weather did not reduce validation MAE) for both model families at all three horizons, ranging from -0.18% to -1.13%.
+- Eight focused Phase 5C Spark tests passed; zero A/B population or key mismatches, zero invalid predictions, and the identical zero-clipping nonnegative rule applied to all models.
 
 ## Open Blockers
 
@@ -59,10 +62,10 @@ started.
 ## Decisions Awaiting Evidence
 
 - Whether a secondary analysis should include incomplete predictor rows; the primary paired population is frozen.
-- Final ML algorithms after baselines and feasibility evidence.
 - Whether Elasticsearch and Kibana remain in the final architecture.
+- Frozen test-set evaluation of the selected models is pending explicit authorization.
 
 ## Next Action
 
-Await explicit authorization for the next phase. Do not start ML training,
-hyperparameter tuning, Gold, Elasticsearch, or Kibana.
+Await explicit authorization for the next phase. Do not evaluate the frozen
+test set, refit on train+validation, or start Gold, Elasticsearch, or Kibana.

@@ -65,13 +65,15 @@
 | Missing-feature preservation | 43,438 rows lack at least one demand-history feature, 27,972 have a missing weather predictor, and 1,872,866 satisfy the paired-evaluation flag. No missing value was imputed or silently excluded from the persisted feature data. | Keeping all eligible-target rows preserves evidence for a later, explicitly approved missing-data strategy. |
 | Fixed split populations | Train has 1,228,770 paired rows, validation 325,008, and test 319,088. Exclusions total 65,712/0/5,698 respectively; reasons are preserved independently and exclusively in the Silver manifest. | A random split would inflate similarity across time and cannot represent forward forecasting. The chronological split leaves only eight months for fitting but protects temporal validity. |
 | Baseline validation evidence | Overall validation MAE/RMSE were 39.748108/75.011838 for persistence, 21.330961/44.829499 for previous-day naive, and 15.122268/29.725824 for previous-week naive. | Persistence is competitive at 1h but degrades sharply with horizon; the seasonal baseline is a stronger overall threshold for future ML. |
+| ML candidate selection | Regularized Linear Regression on feature set A (no weather) was selected at every horizon from validation MAE only: 12.326950 (1h), 14.180445 (3h), 14.457571 (6h), each below the frozen previous-week baseline (15.122268). Full grid, weather deltas, and integrity checks are in `docs/ml_selection_validation.md`. | A small predeclared validation-only grid over two model families, fit on train only, avoids tuning against the frozen test set while still comparing linear and tree-ensemble capacity. |
+| Weather A/B outcome | Adding approved weather predictors (feature set B) did not reduce validation MAE for either model family at any horizon; the measured change ranged from -0.18% to -1.13% (negative = MAE increased). | The result was measured, not assumed; feature set A is therefore selected. This does not by itself rule out weather value under different features, horizons, or evaluation windows. |
 
 ## Evidence-Dependent Decisions
 
 | Topic | Status | Evidence needed |
 |---|---|---|
 | Secondary treatment of incomplete predictor rows | TBD | Primary A/B evaluation is frozen to the complete paired population; decide whether a separately labeled secondary analysis adds value without contaminating the primary comparison |
-| Final ML algorithms | TBD | Baseline results, data scale, interpretability, and validation evidence |
+| Frozen test-set evaluation of selected models | TBD | Explicit authorization to read the November-December test partitions |
 | Elasticsearch and Kibana in final architecture | TBD | Core-pipeline stability and demonstrated analytical value |
 
 Elasticsearch and Kibana are therefore provisional post-core components, not a completed architecture commitment.
