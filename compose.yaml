@@ -122,6 +122,28 @@ services:
       start_period: 5s
     restart: unless-stopped
 
+  bronze-ingest:
+    profiles: ["ingestion"]
+    image: nyc-taxi-weather-bronze-ingest:python3.12
+    build:
+      context: .
+      dockerfile: docker/ingestion/Dockerfile
+    depends_on:
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:?Copy .env.example to .env and set MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:?Copy .env.example to .env and set MINIO_ROOT_PASSWORD}
+      AWS_REGION: us-east-1
+      S3_ENDPOINT_URL: http://minio:9000
+    volumes:
+      - ./data/ingestion:/output
+    restart: "no"
+    networks:
+      - data-platform
+
 volumes:
   minio-data:
 

@@ -25,6 +25,7 @@
 | Local Spark deployment | Pinned Spark 3.5.7 standalone cluster with one master and one worker in Docker Compose |
 | Spark object-store connector | Hadoop 3.3.4 S3A with `hadoop-aws` 3.3.4 and `aws-java-sdk-bundle` 1.12.262 |
 | MinIO layout | `bigdata` bucket with Bronze, Silver, and Gold prefixes initialized idempotently |
+| Unavailable archived forecasts | Preserve provider responses and report exact missing coverage; do not impute or substitute observed/reanalysis weather in Bronze |
 
 ## Evidence and Trade-offs
 
@@ -39,12 +40,14 @@
 | One Spark master and one worker | The standalone worker executed the validated S3A round-trip job after both clean startup and service restart. This is the smallest cluster shape that exercises remote executor scheduling rather than driver-only local mode. | Local mode would use fewer containers but would not validate worker execution; adding more workers would add no Phase 2 evidence. |
 | Hadoop 3.3.4 S3A dependency set | The official Spark 3.5.7 image bundles Hadoop client 3.3.4. Matching `hadoop-aws` 3.3.4 and its AWS SDK bundle 1.12.262 successfully wrote and read Parquet through MinIO. | Runtime package resolution is smaller initially but depends on mutable local caches and network access on every run. The custom image is larger because the SDK bundle is embedded. |
 | One MinIO bucket with layer prefixes | The initializer created `bigdata` plus seven idempotent marker-backed prefixes, and MinIO readiness was checked before Spark startup. | Separate buckets can provide stronger policy boundaries but add configuration without a demonstrated local-project need. |
+| Preserve archived-forecast gaps | Eight of 1,461 required ECMWF run positions were unavailable from the provider. Their responses are retained, and 9,810 missing predictor slots across 136 target hours are reported by run, target hour, horizon, point, and variable. | Imputation or observed-weather substitution would hide source limitations or violate the ex-ante research design; any modeling treatment requires Phase 4 evidence. |
 
 ## Evidence-Dependent Decisions
 
 | Topic | Status | Evidence needed |
 |---|---|---|
 | Final Taxi Zone IDs | TBD | Apply the approved 95% coverage rule to the full 2025 period and verify active-hour sparsity |
+| Phase 4 forecast-gap treatment | TBD | Evaluate exclusion, explicit missingness features, or other leakage-safe handling against the machine-readable Bronze coverage report |
 | Final ML algorithms | TBD | Baseline results, data scale, interpretability, and validation evidence |
 | Elasticsearch and Kibana in final architecture | TBD | Core-pipeline stability and demonstrated analytical value |
 

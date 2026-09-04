@@ -75,3 +75,40 @@ Add `-KeepRunning` to either command when the services should remain running.
 ```powershell
 docker compose --env-file .env down --remove-orphans
 ```
+
+## Phase 3 Bronze ingestion
+
+Bronze ingestion preserves the 12 official 2025 Yellow Taxi Parquet files,
+official Taxi Zone references, and Open-Meteo ECMWF IFS Single Run JSON
+responses unchanged in MinIO. It uses five coordinates, seven approved weather
+variables, and the six-hour publication lag. Missing forecast data are reported;
+observed weather is never substituted and Bronze performs no imputation.
+
+Build the pinned Python 3.12.8 ingestion image and run its tests:
+
+```powershell
+docker compose --env-file .env --profile ingestion build bronze-ingest
+docker run --rm --entrypoint python nyc-taxi-weather-bronze-ingest:python3.12 -m unittest discover -s /app/tests -v
+```
+
+Run or resume ingestion. Existing checksum-verified objects are reused, and the
+default 3.8-second weather request interval stays below the provider's weighted
+hourly limit for a five-coordinate request.
+
+```powershell
+docker compose --env-file .env --profile ingestion run --rm bronze-ingest
+```
+
+Regenerate the detailed missing-coverage report from stored raw responses,
+without source requests or reacquisition:
+
+```powershell
+docker compose --env-file .env --profile ingestion run --rm bronze-ingest --finalize-missing-coverage
+```
+
+The machine-readable manifest, summary, raw inventory, validation report, and
+weather missing-coverage report are stored below `bronze/manifests/` in the
+`bigdata` bucket. Local working copies under `data/ingestion/` are ignored by
+Git. The completed inventory contains 1,475 raw source objects totaling
+843,310,328 bytes: 12 taxi files, 1,453 successful weather responses, eight
+preserved provider-unavailable responses, and two Taxi Zone references.

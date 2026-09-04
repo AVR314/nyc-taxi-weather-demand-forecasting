@@ -2,8 +2,8 @@
 
 ## Current Phase
 
-Phase 2 core infrastructure is complete and validated. Bulk ingestion and the
-data pipeline have not started.
+Phase 3 Bronze ingestion is complete and validated. Cleaning, aggregation,
+feature engineering, modeling, and other Phase 4 work have not started.
 
 ## Completed and Validated
 
@@ -24,6 +24,13 @@ data pipeline have not started.
 - Spark worker wrote a three-row DataFrame to MinIO as Parquet through `s3a://`, read it back, and validated the exact schema, row count, and values.
 - The same Spark-MinIO round trip passed after restarting MinIO, the Spark master, and the Spark worker.
 - Clean stack shutdown removed all Phase 2 containers and the Compose network while preserving the named MinIO data volume.
+- All 12 official 2025 Yellow Taxi Parquet files were preserved unchanged in Bronze: 829,973,299 bytes total with per-object SHA-256 provenance.
+- The official Taxi Zone lookup and geographic archive were preserved unchanged in Bronze reference storage.
+- The complete 1,461-run weather plan was attempted using five-coordinate Open-Meteo ECMWF IFS Single Run requests; 1,453 raw forecast JSON responses and eight raw provider-unavailable responses were preserved.
+- Bronze contains 1,475 source objects totaling 843,310,328 bytes. Deep checksum/object verification completed with zero errors.
+- An idempotent resume reused all 12 taxi files, both references, and all 1,461 weather outcomes without source downloads.
+- Machine-readable missing coverage identifies 9,810 required predictor slots across 136 target hours; no observed/reanalysis substitution or imputation was performed.
+- The complete six-test suite passed after the detailed missing-coverage implementation was added.
 
 ## Open Blockers
 
@@ -32,10 +39,11 @@ data pipeline have not started.
 ## Decisions Awaiting Evidence
 
 - Exact Taxi Zone IDs after the approved rule is applied to the full 2025 period.
+- Phase 4 treatment of the documented archived-forecast gaps.
 - Final ML algorithms after baselines and feasibility evidence.
 - Whether Elasticsearch and Kibana remain in the final architecture.
 
 ## Next Action
 
-Await explicit authorization for Phase 3. Do not start bulk data acquisition,
-Spark ETL, feature engineering, or ML before that authorization.
+Await explicit authorization for Phase 4. Do not start cleaning, Spark ETL,
+feature engineering, or ML before that authorization.
