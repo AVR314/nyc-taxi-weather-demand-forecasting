@@ -2,9 +2,8 @@
 
 ## Current Phase
 
-Phase 4 Silver Spark ETL is complete and validated. Feature engineering,
-train/test splitting, modeling, Gold outputs, Elasticsearch, and Kibana have not
-started.
+Phase 5A leakage-safe modeling features are complete and validated. Train/test
+splitting, modeling, Gold outputs, Elasticsearch, and Kibana have not started.
 
 ## Completed and Validated
 
@@ -41,6 +40,11 @@ started.
 - Silver weather contains 131,400 required records: 130,680 source-present, 720 from unavailable runs, and 1,890 with at least one missing predictor; leakage violations and duplicate keys are zero.
 - The demand-weather join contains exactly 6,885,360 rows with zero unmatched rows, duplicate keys, or many-to-many expansion.
 - Five focused synthetic Spark tests passed, and the full Silver inventory contains 85 data objects totaling 1,516,380,422 bytes before the validation report.
+- The approved 74-zone modeling scope contains 1,944,720 candidates; 444 unavailable DST targets were explicitly excluded and 1,944,276 feature rows were persisted, exactly 648,092 per horizon.
+- Zone-specific cutoff, lag, local previous-day/week, trailing mean, and trailing 24-hour standard-deviation features were built without target demand or future timestamps; all source-time and rolling-window audits passed with zero violations.
+- Feature set A contains only 13 demand/calendar predictors. Feature set B adds only the seven approved forecast variables and their weather-related availability indicators.
+- Missing values were preserved: 43,438 rows lack at least one demand-history feature, 27,972 have at least one weather predictor missing, and 1,872,866 rows satisfy the future paired-evaluation completeness flag.
+- Six focused Phase 5A Spark tests passed. The modeling feature path contains 37 objects totaling 90,690,988 bytes, including `_SUCCESS`.
 
 ## Open Blockers
 
@@ -48,11 +52,11 @@ started.
 
 ## Decisions Awaiting Evidence
 
-- Downstream feature/model treatment of the documented archived-forecast gaps.
+- Final train-time treatment of preserved demand-history and archived-forecast gaps.
 - Final ML algorithms after baselines and feasibility evidence.
 - Whether Elasticsearch and Kibana remain in the final architecture.
 
 ## Next Action
 
-Await explicit authorization for the next phase. Do not start feature
-engineering, train/test splitting, ML, Gold, Elasticsearch, or Kibana.
+Await explicit authorization for the next phase. Do not start train/test
+splitting, ML, Gold, Elasticsearch, or Kibana.

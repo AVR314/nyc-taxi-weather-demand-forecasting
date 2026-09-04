@@ -150,3 +150,27 @@ machine-readable validation report to
 `s3a://bigdata/silver/manifests/silver_etl_report.json`; a local ignored copy is
 written to `data/silver/silver_etl_report.json`. Measured results and schemas are
 summarized in `docs/silver_etl_validation.md`.
+
+## Phase 5A modeling features
+
+Run the focused synthetic Spark tests before the full feature job:
+
+```powershell
+docker compose --env-file .env run --rm --no-deps spark-master /opt/spark/bin/spark-submit --master "local[2]" /opt/project/tests/test_modeling_features.py
+```
+
+With MinIO and the standalone Spark cluster running, build the leakage-safe
+feature dataset from the validated Silver outputs:
+
+```powershell
+docker compose --env-file .env up --detach minio minio-init spark-master spark-worker
+docker compose --env-file .env exec -T spark-master /opt/spark/bin/spark-submit --master spark://spark-master:7077 --driver-memory 2g --executor-memory 2g --conf spark.cores.max=2 /opt/project/src/modeling_features/job.py
+```
+
+The job writes partitioned Parquet to
+`s3a://bigdata/silver/modeling_features/records` and its machine-readable report
+to `s3a://bigdata/silver/manifests/modeling_features_report.json`. It filters to
+the approved 74 zones and available targets, preserves horizons separately,
+does not impute missing history or weather, and exposes a paired-evaluation
+eligibility flag. Measured results are in
+`docs/modeling_features_validation.md`.

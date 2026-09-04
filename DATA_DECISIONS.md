@@ -32,6 +32,11 @@
 | Spark object-store connector | Hadoop 3.3.4 S3A with `hadoop-aws` 3.3.4 and `aws-java-sdk-bundle` 1.12.262 |
 | MinIO layout | `bigdata` bucket with Bronze, Silver, and Gold prefixes initialized idempotently |
 | Unavailable archived forecasts | Preserve provider responses and report exact missing coverage; do not impute or substitute observed/reanalysis weather in Bronze |
+| Demand-history feature timing | For target `t` and horizon `h`, every demand feature is computed per zone from data at or before cutoff `t-h`; rolling windows include and end at the cutoff |
+| Same-hour demand lags | Resolve previous-day/week demand by `America/New_York` local wall hour; if that wall hour is an unresolved DST fold, keep the feature missing rather than choosing an instant |
+| Modeling feature sets | A is demand/calendar only; B is the identical A columns plus the seven forecasts, per-variable missing flags, any-weather-missing, and source-response availability |
+| Trailing demand variability | Include population standard deviation over the complete 24-hour window ending at cutoff; leave it missing when any window hour is unavailable |
+| Paired evaluation population flag | Mark a row eligible only when every demand-history feature and every weather predictor is present; defer actual row selection until model evaluation |
 
 ## Evidence and Trade-offs
 
@@ -52,12 +57,14 @@
 | Full-year 95% Taxi Zone set | The 74 selected zones contain 46,215,963 of 48,601,811 accepted five-borough pickups (95.0910307%). The least temporally active selected zone is Zone 66, active in 7,600 of 8,758 available hours (86.7778032%). Exact IDs are recorded in `docs/silver_etl_validation.md`. | January's 53-zone feasibility set was provisional. Applying the approved rule to the full year increases coverage stability without silently changing the rule. |
 | Explicit complete demand grid | The 262-zone × 8,760-hour grid contains 2,295,120 rows and 883,059 measured zero-demand rows. The 524 zone-hours at the two unresolved fall-back instants remain null/unavailable. | Omitting zeros biases activity patterns; turning unresolved DST targets into zeros would fabricate negative evidence. |
 | Weather missingness in Silver | Of 131,400 required records, 130,680 have source responses, 720 arise from unavailable runs, and 1,890 have at least one missing predictor. | Complete expected keys plus missingness flags preserve join cardinality without imputation or observed-weather substitution. |
+| Leakage-safe modeling features | The 74-zone feature build produced 1,944,276 rows: 648,092 per horizon. All audited source timestamps were at or before cutoff, rolling-window end violations and duplicate keys were zero, and feature set B differs from A only by weather-related columns. | Source-time audit columns increase Silver size, but make temporal claims directly testable. |
+| Missing-feature preservation | 43,438 rows lack at least one demand-history feature, 27,972 have a missing weather predictor, and 1,872,866 satisfy the paired-evaluation flag. No missing value was imputed or silently excluded from the persisted feature data. | Keeping all eligible-target rows preserves evidence for a later, explicitly approved missing-data strategy. |
 
 ## Evidence-Dependent Decisions
 
 | Topic | Status | Evidence needed |
 |---|---|---|
-| Downstream forecast-gap treatment | TBD | Evaluate exclusion, explicit missingness features, or other leakage-safe handling during feature/model design; Silver preserves the gaps unchanged |
+| Final training treatment of missing predictors | TBD | Phase 5A preserves values and flags and measures the 1,872,866-row complete paired population; select exclusion/imputation/model-native handling only with the split and modeling design |
 | Final ML algorithms | TBD | Baseline results, data scale, interpretability, and validation evidence |
 | Elasticsearch and Kibana in final architecture | TBD | Core-pipeline stability and demonstrated analytical value |
 
