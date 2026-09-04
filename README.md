@@ -220,3 +220,30 @@ plus Taxi Zone identity) and B (A plus approved weather). Preprocessing is
 fit on train only; test partitions are never read. The manifest is written
 to `s3a://bigdata/silver/manifests/ml_candidate_selection_report.json`;
 measured results are in `docs/ml_selection_validation.md`.
+
+## Phase 5D final frozen TEST evaluation and Gold outputs
+
+Run the focused tests:
+
+```powershell
+docker compose --env-file .env run --rm --no-deps spark-master /opt/spark/bin/spark-submit --master "local[2]" /opt/project/tests/test_final_evaluation.py
+```
+
+Then refit the Phase 5C-selected Regularized Linear Regression configuration
+on train+validation and evaluate once on the frozen test partitions:
+
+```powershell
+docker compose --env-file .env up --detach minio minio-init spark-master spark-worker
+docker compose --env-file .env exec -T spark-master /opt/spark/bin/spark-submit --master spark://spark-master:7077 --driver-memory 2g --executor-memory 2g --conf spark.cores.max=2 /opt/project/src/final_evaluation/job.py
+```
+
+Model family, hyperparameters, feature contracts, and preprocessing are
+frozen from Phase 5C validation-only selection; nothing changes based on
+TEST results. Gradient-Boosted Trees is not evaluated because it was not
+selected. Preprocessing and the model are refit on train+validation only
+(test rows are never used for fitting or preprocessing) and scored once on
+test. Compact final predictions are written to
+`s3a://bigdata/gold/predictions` (partitioned by `horizon_hours` and
+`feature_set`); the metrics manifest is written to
+`s3a://bigdata/gold/metrics/final_test_evaluation_report.json`. Measured
+results are in `docs/final_test_evaluation_validation.md`.

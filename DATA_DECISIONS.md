@@ -41,6 +41,7 @@
 | Primary A/B comparison population | Use exactly `paired_evaluation_eligible == true` for both feature sets without imputation; preserve excluded-row reasons by split and horizon |
 | Baseline selection rule | Select by overall validation MAE only; RMSE is secondary and test metrics cannot affect selection or future design |
 | Selected non-ML baseline | Previous-week seasonal naive, selected from validation MAE 15.122268; the test set remains frozen and its results were not used for selection |
+| Final frozen TEST evaluation protocol | Refit the Phase 5C-selected Regularized Linear Regression configuration (frozen hyperparameters per horizon/feature set) on train+validation only, score once on frozen test, and never change model/feature/hyperparameter choices afterward |
 
 ## Evidence and Trade-offs
 
@@ -67,13 +68,13 @@
 | Baseline validation evidence | Overall validation MAE/RMSE were 39.748108/75.011838 for persistence, 21.330961/44.829499 for previous-day naive, and 15.122268/29.725824 for previous-week naive. | Persistence is competitive at 1h but degrades sharply with horizon; the seasonal baseline is a stronger overall threshold for future ML. |
 | ML candidate selection | Regularized Linear Regression on feature set A (no weather) was selected at every horizon from validation MAE only: 12.326950 (1h), 14.180445 (3h), 14.457571 (6h), each below the frozen previous-week baseline (15.122268). Full grid, weather deltas, and integrity checks are in `docs/ml_selection_validation.md`. | A small predeclared validation-only grid over two model families, fit on train only, avoids tuning against the frozen test set while still comparing linear and tree-ensemble capacity. |
 | Weather A/B outcome | Adding approved weather predictors (feature set B) did not reduce validation MAE for either model family at any horizon; the measured change ranged from -0.18% to -1.13% (negative = MAE increased). | The result was measured, not assumed; feature set A is therefore selected. This does not by itself rule out weather value under different features, horizons, or evaluation windows. |
+| Final frozen TEST evaluation | The frozen Phase 5C Regularized Linear Regression configuration (regParam 0.1/0.1/0.01 for 1h/3h/6h) was refit on train+validation and scored once on frozen test: MAE 13.789029 (1h A), 13.775351 (1h B), 17.476389 (3h A), 17.474982 (3h B), 18.350151 (6h A), 18.369958 (6h B); feature set A beats the frozen baseline test MAE at every horizon. Weather TEST deltas are small and change sign by horizon (+0.099%, +0.008%, -0.108%). Full detail in `docs/final_test_evaluation_validation.md`. | No model, feature, or hyperparameter change was made after observing TEST; Gradient-Boosted Trees was excluded because it was not selected in Phase 5C. |
 
 ## Evidence-Dependent Decisions
 
 | Topic | Status | Evidence needed |
 |---|---|---|
 | Secondary treatment of incomplete predictor rows | TBD | Primary A/B evaluation is frozen to the complete paired population; decide whether a separately labeled secondary analysis adds value without contaminating the primary comparison |
-| Frozen test-set evaluation of selected models | TBD | Explicit authorization to read the November-December test partitions |
 | Elasticsearch and Kibana in final architecture | TBD | Core-pipeline stability and demonstrated analytical value |
 
 Elasticsearch and Kibana are therefore provisional post-core components, not a completed architecture commitment.

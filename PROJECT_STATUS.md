@@ -2,8 +2,9 @@
 
 ## Current Phase
 
-Phase 5C ML candidate selection is complete and validated on train/validation
-only. Gold outputs, Elasticsearch, and Kibana have not started.
+Phase 5D final frozen TEST evaluation is complete and validated. Gold
+predictions and metrics are published. Elasticsearch and Kibana have not
+started.
 
 ## Completed and Validated
 
@@ -54,6 +55,11 @@ only. Gold outputs, Elasticsearch, and Kibana have not started.
 - The selected model at every horizon is regularized Linear Regression on feature set A (demand/calendar + zone, no weather): validation MAE/RMSE 12.326950/22.095700 (1h), 14.180445/26.519300 (3h), 14.457571/27.449900 (6h), each beating the frozen previous-week baseline (MAE 15.122268) by 18.48%, 6.23%, and 4.40% respectively.
 - Measured weather A/B deltas were negative (weather did not reduce validation MAE) for both model families at all three horizons, ranging from -0.18% to -1.13%.
 - Eight focused Phase 5C Spark tests passed; zero A/B population or key mismatches, zero invalid predictions, and the identical zero-clipping nonnegative rule applied to all models.
+- Phase 5D refit the frozen Phase 5C Regularized Linear Regression configuration (Gradient-Boosted Trees excluded, not selected) on train+validation (517,926 rows per horizon) and evaluated once on the frozen test partitions (106,412/106,338/106,338 rows for 1h/3h/6h).
+- Final TEST MAE/RMSE: 13.789029/24.889088 (1h A), 13.775351/24.882623 (1h B), 17.476389/33.478442 (3h A), 17.474982/33.467007 (3h B), 18.350151/35.703538 (6h A), 18.369958/35.706288 (6h B); the selected feature set A beats the frozen previous-week baseline test MAE (20.969355/20.996511/21.009413) by 7.180326/3.520122/2.659262 at every horizon.
+- Measured weather TEST deltas are small and change sign by horizon: +0.099% (1h), +0.008% (3h), -0.108% (6h); this does not reverse the Phase 5C validation finding that weather's effect is near zero.
+- Six focused Phase 5D Spark tests passed; zero A/B TEST key mismatches, zero test rows used for fitting/preprocessing, zero null/NaN predictions, and configurations frozen before TEST access.
+- Gold predictions (638,176 rows, `s3a://bigdata/gold/predictions`) and the final metrics manifest (`s3a://bigdata/gold/metrics/final_test_evaluation_report.json`) are published.
 
 ## Open Blockers
 
@@ -63,9 +69,10 @@ only. Gold outputs, Elasticsearch, and Kibana have not started.
 
 - Whether a secondary analysis should include incomplete predictor rows; the primary paired population is frozen.
 - Whether Elasticsearch and Kibana remain in the final architecture.
-- Frozen test-set evaluation of the selected models is pending explicit authorization.
 
 ## Next Action
 
-Await explicit authorization for the next phase. Do not evaluate the frozen
-test set, refit on train+validation, or start Gold, Elasticsearch, or Kibana.
+Core pipeline, modeling, and frozen TEST evaluation are complete. Remaining
+work is the design document, architecture diagram, presentation, demo, and
+the still-open team-of-three administrative approval. Do not re-run or
+re-tune the frozen TEST evaluation.
