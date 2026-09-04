@@ -70,11 +70,14 @@
 | Weather A/B outcome | Adding approved weather predictors (feature set B) did not reduce validation MAE for either model family at any horizon; the measured change ranged from -0.18% to -1.13% (negative = MAE increased). | The result was measured, not assumed; feature set A is therefore selected. This does not by itself rule out weather value under different features, horizons, or evaluation windows. |
 | Final frozen TEST evaluation | The frozen Phase 5C Regularized Linear Regression configuration (regParam 0.1/0.1/0.01 for 1h/3h/6h) was refit on train+validation and scored once on frozen test: MAE 13.789029 (1h A), 13.775351 (1h B), 17.476389 (3h A), 17.474982 (3h B), 18.350151 (6h A), 18.369958 (6h B); feature set A beats the frozen baseline test MAE at every horizon. Weather TEST deltas are small and change sign by horizon (+0.099%, +0.008%, -0.108%). Full detail in `docs/final_test_evaluation_validation.md`. | No model, feature, or hyperparameter change was made after observing TEST; Gradient-Boosted Trees was excluded because it was not selected in Phase 5C. |
 
+## Closed Decisions
+
+| Topic | Final decision | Rationale |
+|---|---|---|
+| Elasticsearch and Kibana in final architecture | **Not included.** | MinIO already satisfies the assignment's required Big Data storage technology across Bronze/Silver/Gold. Elasticsearch/Kibana add no demonstrated value to the core research question (weather's incremental predictive value) and were never required to answer it. |
+| Secondary post-TEST modeling analysis | **None will be performed.** | The primary A/B evaluation is frozen to the complete paired population and was scored exactly once on TEST; a secondary analysis (e.g. including incomplete predictor rows) risks contaminating or being confused with the frozen primary result. |
+| Frozen TEST evaluation retuning | **Will never be retuned.** | Model family, hyperparameters, and feature contracts were frozen from validation-only selection before TEST access (Phase 5C/5D) and TEST was scored exactly once; retuning after seeing TEST results would invalidate the evaluation. |
+
 ## Evidence-Dependent Decisions
 
-| Topic | Status | Evidence needed |
-|---|---|---|
-| Secondary treatment of incomplete predictor rows | TBD | Primary A/B evaluation is frozen to the complete paired population; decide whether a separately labeled secondary analysis adds value without contaminating the primary comparison |
-| Elasticsearch and Kibana in final architecture | TBD | Core-pipeline stability and demonstrated analytical value |
-
-Elasticsearch and Kibana are therefore provisional post-core components, not a completed architecture commitment.
+None remain open. All prior evidence-dependent decisions were resolved above.

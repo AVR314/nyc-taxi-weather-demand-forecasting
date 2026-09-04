@@ -2,9 +2,11 @@
 
 ## Current Phase
 
-Phase 5D final frozen TEST evaluation is complete and validated. Gold
-predictions and metrics are published. Elasticsearch and Kibana have not
-started.
+Phase 6A final submission documentation is complete: design document,
+architecture diagram, polished README, and requirements audit are done.
+Phase 5D final frozen TEST evaluation remains complete and validated. Gold
+predictions and metrics are published. Elasticsearch and Kibana are
+excluded from the final architecture (see Closed Decisions).
 
 ## Completed and Validated
 
@@ -60,19 +62,22 @@ started.
 - Measured weather TEST deltas are small and change sign by horizon: +0.099% (1h), +0.008% (3h), -0.108% (6h); this does not reverse the Phase 5C validation finding that weather's effect is near zero.
 - Six focused Phase 5D Spark tests passed; zero A/B TEST key mismatches, zero test rows used for fitting/preprocessing, zero null/NaN predictions, and configurations frozen before TEST access.
 - Gold predictions (638,176 rows, `s3a://bigdata/gold/predictions`) and the final metrics manifest (`s3a://bigdata/gold/metrics/final_test_evaluation_report.json`) are published.
+- Phase 6A added `docs/design_document.md` (1-2 page summary) and `docs/architecture_diagram.md` (Mermaid source) and rewrote `README.md` with a research-question summary, results table, architecture overview, dataset sources, repository structure, validation summary, and limitations, using only already-measured evidence.
 
 ## Open Blockers
 
 - **Administrative:** The assignment specifies teams of three students. Approval for solo work is not confirmed.
 
-## Decisions Awaiting Evidence
+## Closed Decisions
 
-- Whether a secondary analysis should include incomplete predictor rows; the primary paired population is frozen.
-- Whether Elasticsearch and Kibana remain in the final architecture.
+- Elasticsearch and Kibana are **not included** in the final architecture; MinIO already satisfies the required Big Data storage technology and the extra layer adds no demonstrated value to the research question.
+- No secondary post-TEST modeling analysis will be performed; the primary paired-population A/B evaluation is frozen.
+- The frozen TEST evaluation will never be retuned.
 
 ## Next Action
 
-Core pipeline, modeling, and frozen TEST evaluation are complete. Remaining
-work is the design document, architecture diagram, presentation, demo, and
-the still-open team-of-three administrative approval. Do not re-run or
-re-tune the frozen TEST evaluation.
+Core pipeline, modeling, frozen TEST evaluation, and submission
+documentation (design document, architecture diagram, polished README,
+requirements audit) are complete. Remaining work is the presentation,
+demo, Q&A rehearsal, and the still-open team-of-three administrative
+approval. Do not re-run or re-tune the frozen TEST evaluation.

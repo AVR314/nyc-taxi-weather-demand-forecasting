@@ -1,5 +1,105 @@
 # NYC Taxi Weather Demand Forecasting
 
+An end-to-end Big Data + ML pipeline that forecasts hourly NYC taxi demand
+per Taxi Zone and measures whether weather forecasts add predictive value
+at 1-hour, 3-hour, and 6-hour horizons.
+
+## Research question
+
+Can weather information improve short-term NYC taxi demand forecasting, and
+how does its predictive value change across 1h, 3h, and 6h horizons?
+
+## Key conclusion
+
+A Regularized Linear Regression model on demand/calendar/zone features beat
+the frozen previous-week seasonal-naive baseline at every horizon on the
+frozen TEST set (MAE 13.789 / 17.476 / 18.350 vs baseline 20.969 / 20.997 /
+21.009 for 1h/3h/6h). **Adding weather forecasts had no material,
+consistent incremental predictive value**: measured validation deltas were
+negative at every horizon (−0.18% to −1.13%), and TEST deltas were small and
+changed sign by horizon (+0.099%, +0.008%, −0.108%). See
+`docs/design_document.md` and `docs/final_test_evaluation_validation.md`
+for full evidence.
+
+## Final results (frozen TEST)
+
+| Horizon | Feature set | Rows | MAE | RMSE | vs. baseline MAE |
+|---|---|---:|---:|---:|---:|
+| 1h | A (no weather) | 106,412 | 13.789029 | 24.889088 | −7.180326 |
+| 1h | B (+ weather) | 106,412 | 13.775351 | 24.882623 | — |
+| 3h | A (no weather) | 106,338 | 17.476389 | 33.478442 | −3.520122 |
+| 3h | B (+ weather) | 106,338 | 17.474982 | 33.467007 | — |
+| 6h | A (no weather) | 106,338 | 18.350151 | 35.703538 | −2.659262 |
+| 6h | B (+ weather) | 106,338 | 18.369958 | 35.706288 | — |
+
+Baseline: previous-week seasonal naive, frozen TEST MAE 20.969355 / 20.996511 / 21.009413 (1h/3h/6h).
+
+## Architecture overview
+
+```
+NYC TLC Yellow Taxi Parquet + Open-Meteo ECMWF forecast JSON
+  -> MinIO Bronze (raw, unmodified)
+  -> Apache Spark ETL (clean, aggregate, join, engineer leakage-safe features)
+  -> MinIO Silver (cleaned taxi, demand grid, weather, join, modeling features)
+  -> chronological Train/Validation/frozen-Test split + non-ML baselines
+  -> Spark ML validation-only model selection (Linear Regression vs GBT, A vs B)
+  -> frozen final Linear Regression evaluation on Test (A and B)
+  -> MinIO Gold (predictions + metrics)
+```
+
+Full diagram: `docs/architecture_diagram.md`. Design rationale and
+trade-offs: `docs/design_document.md`.
+
+## Technologies
+
+- **Apache Spark** 3.5.7 (standalone, one master + one worker) — all
+  meaningful ETL, feature engineering, and ML transformation.
+- **MinIO** (S3-compatible object store) — Bronze/Silver/Gold layers; the
+  required Big Data storage technology. Elasticsearch/Kibana were
+  evaluated and explicitly excluded from the final architecture (see
+  `DATA_DECISIONS.md`).
+- **PySpark ML** (`LinearRegression`, `GBTRegressor`) for model training and
+  selection.
+- **Docker Compose** for reproducible, host-install-free infrastructure.
+- **Python 3.12.8** for Bronze ingestion and feasibility tooling.
+
+## Dataset sources
+
+- NYC TLC Yellow Taxi trip records, calendar year 2025:
+  `https://d37ci6vzurychx.cloudfront.net/trip-data` (official monthly
+  Parquet files) plus the official Taxi Zone lookup/geographic reference.
+- Open-Meteo ECMWF IFS Single Runs forecast JSON:
+  `https://single-runs-api.open-meteo.com/v1/forecast` (five NYC points,
+  seven weather variables, six-hour publication lag).
+
+## Repository structure
+
+```
+src/
+  bronze_ingestion/     Bronze raw-data acquisition (taxi + weather)
+  silver_etl/            Spark cleaning, demand grid, weather join
+  modeling_features/      Leakage-safe feature engineering
+  forecast_baselines/     Chronological splits + non-ML baselines
+  ml_selection/           Validation-only ML candidate selection
+  final_evaluation/       Frozen final TEST evaluation + Gold outputs
+tests/                    Focused unit/Spark tests per stage
+docs/                     Validation reports, design document, diagram
+scripts/                  Feasibility profiling and infrastructure smoke tests
+data/                     Local ignored working copies of manifests/reports
+compose.yaml, docker/     Infrastructure definition
+AGENTS.md                 Project rules and engineering process
+DATA_DECISIONS.md         Approved decisions, evidence, and trade-offs
+PROJECT_STATUS.md         Phase-by-phase completion log
+REQUIREMENTS_TRACEABILITY.md  Assignment requirement status
+```
+
+## Reproducible setup and run instructions
+
+The sections below walk through every pipeline stage in order: infrastructure
+start-up, Bronze ingestion, Silver ETL, feature engineering, baselines, ML
+selection, and the frozen final evaluation. Each stage lists its focused test
+command followed by its full-run command.
+
 ## Phase 2 infrastructure
 
 The local infrastructure contains only MinIO, a one-shot MinIO initializer, one
@@ -247,3 +347,32 @@ test. Compact final predictions are written to
 `feature_set`); the metrics manifest is written to
 `s3a://bigdata/gold/metrics/final_test_evaluation_report.json`. Measured
 results are in `docs/final_test_evaluation_validation.md`.
+
+## Validation and testing
+
+Every stage has a focused test suite (`tests/test_*.py`, run via
+`spark-submit --master "local[2]"` as shown above) plus a full-run
+machine-readable validation report under `s3a://bigdata/silver/manifests/`
+or `s3a://bigdata/gold/metrics/`, mirrored to a human-readable summary in
+`docs/`. Validated evidence includes zero leakage violations, zero
+duplicate/missing keys, identical A/B populations, exact expected row
+counts, and — for the frozen TEST evaluation — proof that no TEST row was
+used for fitting or preprocessing and that no model/feature/hyperparameter
+choice changed after TEST access.
+
+## Limitations
+
+- Forecast weather (ECMWF single runs, six-hour lag) approximates but does
+  not exactly reproduce true operational forecast availability.
+- One calendar year (2025) limits exposure to inter-annual variability.
+- The 74-zone scope covers 95% of demand but excludes low-volume zones.
+- 2025 DST transition hours are quarantined (excluded), not imputed.
+- Only Regularized Linear Regression was carried to the frozen TEST
+  evaluation; Gradient-Boosted Trees was evaluated at validation time only
+  and was not selected.
+
+## Open items
+
+- Presentation slides, demo, and Q&A rehearsal are not yet prepared.
+- University approval for solo (non-team-of-three) work is not yet
+  confirmed; see `PROJECT_STATUS.md`.
