@@ -129,3 +129,24 @@ missing boundary runs:
 ```powershell
 docker compose --env-file .env --profile ingestion run --rm bronze-ingest --update-weather-plan
 ```
+
+## Phase 4 Silver ETL
+
+Run the focused synthetic Spark tests:
+
+```powershell
+docker compose --env-file .env run --rm --no-deps spark-master /opt/spark/bin/spark-submit --master "local[2]" /opt/project/tests/test_silver_etl.py
+```
+
+Start MinIO and the standalone Spark cluster, then run the full 2025 ETL:
+
+```powershell
+docker compose --env-file .env up --detach minio minio-init spark-master spark-worker
+docker compose --env-file .env exec -T spark-master /opt/spark/bin/spark-submit --master spark://spark-master:7077 --driver-memory 2g --executor-memory 2g --conf spark.cores.max=2 /opt/project/src/silver_etl/job.py
+```
+
+The job overwrites only its Silver output paths, never Bronze. It writes the
+machine-readable validation report to
+`s3a://bigdata/silver/manifests/silver_etl_report.json`; a local ignored copy is
+written to `data/silver/silver_etl_report.json`. Measured results and schemas are
+summarized in `docs/silver_etl_validation.md`.

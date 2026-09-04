@@ -18,4 +18,9 @@ RUN set -eux; \
       "/opt/spark/jars/hadoop-aws-${HADOOP_AWS_VERSION}.jar" \
       "/opt/spark/jars/aws-java-sdk-bundle-${AWS_JAVA_SDK_BUNDLE_VERSION}.jar"
 
+RUN python3 -m pip install --no-cache-dir \
+      pyproj==3.7.1 \
+      pyshp==2.3.1 \
+      shapely==2.0.7
+
 USER spark

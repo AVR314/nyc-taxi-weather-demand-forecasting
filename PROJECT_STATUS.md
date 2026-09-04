@@ -2,8 +2,9 @@
 
 ## Current Phase
 
-Phase 3 Bronze ingestion is complete and validated. Cleaning, aggregation,
-feature engineering, modeling, and other Phase 4 work have not started.
+Phase 4 Silver Spark ETL is complete and validated. Feature engineering,
+train/test splitting, modeling, Gold outputs, Elasticsearch, and Kibana have not
+started.
 
 ## Completed and Validated
 
@@ -34,6 +35,12 @@ feature engineering, modeling, and other Phase 4 work have not started.
 - The time-axis audit established an explicit `America/New_York` modeling year mapped to `[2025-01-01T05:00Z, 2026-01-01T05:00Z)` and documented the TLC source's missing timezone semantics.
 - One additional boundary run (`2025-12-31T18:00Z`) was acquired successfully; all 1,461 existing weather outcomes were reused and missing coverage remained unchanged.
 - Nine focused Bronze/time-axis tests validate year boundaries, leakage-safe run planning, and the 2025 spring-forward/fall-back behavior.
+- Spark read 48,722,602 Bronze taxi rows, accepted 48,601,811 five-borough local-year pickups, rejected 109,104, and quarantined 11,687 ambiguous fall-back rows.
+- The complete 262-zone × 8,760-hour demand grid contains 2,295,120 rows, including 883,059 legitimate zeros and 524 DST-unavailable zone-hours.
+- The approved full-year 95% rule selected 74 zones covering 46,215,963 accepted pickups (95.0910307%); the least active selected zone is active in 86.7778032% of available hours.
+- Silver weather contains 131,400 required records: 130,680 source-present, 720 from unavailable runs, and 1,890 with at least one missing predictor; leakage violations and duplicate keys are zero.
+- The demand-weather join contains exactly 6,885,360 rows with zero unmatched rows, duplicate keys, or many-to-many expansion.
+- Five focused synthetic Spark tests passed, and the full Silver inventory contains 85 data objects totaling 1,516,380,422 bytes before the validation report.
 
 ## Open Blockers
 
@@ -41,12 +48,11 @@ feature engineering, modeling, and other Phase 4 work have not started.
 
 ## Decisions Awaiting Evidence
 
-- Exact Taxi Zone IDs after the approved rule is applied to the full 2025 period.
-- Phase 4 treatment of the documented archived-forecast gaps.
+- Downstream feature/model treatment of the documented archived-forecast gaps.
 - Final ML algorithms after baselines and feasibility evidence.
 - Whether Elasticsearch and Kibana remain in the final architecture.
 
 ## Next Action
 
-Await explicit authorization for Phase 4. Do not start cleaning, Spark ETL,
-feature engineering, or ML before that authorization.
+Await explicit authorization for the next phase. Do not start feature
+engineering, train/test splitting, ML, Gold, Elasticsearch, or Kibana.

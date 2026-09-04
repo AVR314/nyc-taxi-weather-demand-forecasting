@@ -19,6 +19,9 @@
 | Canonical join axis | UTC instants; the local modeling year maps to `[2025-01-01T05:00Z, 2026-01-01T05:00Z)` |
 | TLC timestamp convention | Treat timezone-naive values as `America/New_York` wall time as an explicit modeling convention, not a TLC-documented source fact |
 | DST anomaly handling | Quarantine nonexistent spring-forward and ambiguous fall-back taxi wall times; never shift or guess a fold |
+| Final modeling Taxi Zones | 74-zone full-year set selected by the approved smallest-set-at-least-95% rule |
+| Demand availability at fall-back | Mark both UTC instants for the unresolved repeated local 01 hour unavailable for every zone; never encode them as zero demand |
+| Zone-to-weather mapping | Compute centroids in the official Taxi Zone archive's projected CRS, transform centroids to EPSG:4326, then select the nearest approved weather point by deterministic haversine distance |
 | Weather provider | Open-Meteo |
 | Forecast-weather source | ECMWF IFS Single Runs with a conservative six-hour publication lag |
 | Observed-weather role | Reference/diagnostic only; not a substitute for ex-ante predictors |
@@ -46,13 +49,15 @@
 | Preserve archived-forecast gaps | Eight of 1,462 required ECMWF run positions were unavailable from the provider. Their responses are retained, and 9,810 missing predictor slots across 136 target hours are reported by run, target hour, horizon, point, and variable. | Imputation or observed-weather substitution would hide source limitations or violate the ex-ante research design; any modeling treatment requires Phase 4 evidence. |
 | Local modeling-year time axis | TLC officially defines pickup time as when the meter was engaged, but its page and data dictionary provide no timezone/offset, and the Parquet timestamp is timezone-naive. NYC civil time is the relevant demand calendar, so `America/New_York` is declared as the reproducible modeling convention and converted to UTC for weather joins. | Treating naive values as UTC would shift local demand patterns by four or five hours. The local convention is evidence-limited and must remain explicit. |
 | DST quarantine | In 2025 New York skips local 02:00 on 9 March and repeats local 01:00 on 2 November. A naive timestamp cannot distinguish the repeated folds. | Shifting nonexistent values or choosing a fold fabricates timing; quarantine preserves uncertainty but removes affected taxi records/targets from modeling. |
+| Full-year 95% Taxi Zone set | The 74 selected zones contain 46,215,963 of 48,601,811 accepted five-borough pickups (95.0910307%). The least temporally active selected zone is Zone 66, active in 7,600 of 8,758 available hours (86.7778032%). Exact IDs are recorded in `docs/silver_etl_validation.md`. | January's 53-zone feasibility set was provisional. Applying the approved rule to the full year increases coverage stability without silently changing the rule. |
+| Explicit complete demand grid | The 262-zone × 8,760-hour grid contains 2,295,120 rows and 883,059 measured zero-demand rows. The 524 zone-hours at the two unresolved fall-back instants remain null/unavailable. | Omitting zeros biases activity patterns; turning unresolved DST targets into zeros would fabricate negative evidence. |
+| Weather missingness in Silver | Of 131,400 required records, 130,680 have source responses, 720 arise from unavailable runs, and 1,890 have at least one missing predictor. | Complete expected keys plus missingness flags preserve join cardinality without imputation or observed-weather substitution. |
 
 ## Evidence-Dependent Decisions
 
 | Topic | Status | Evidence needed |
 |---|---|---|
-| Final Taxi Zone IDs | TBD | Apply the approved 95% coverage rule to the full 2025 period and verify active-hour sparsity |
-| Phase 4 forecast-gap treatment | TBD | Evaluate exclusion, explicit missingness features, or other leakage-safe handling against the machine-readable Bronze coverage report |
+| Downstream forecast-gap treatment | TBD | Evaluate exclusion, explicit missingness features, or other leakage-safe handling during feature/model design; Silver preserves the gaps unchanged |
 | Final ML algorithms | TBD | Baseline results, data scale, interpretability, and validation evidence |
 | Elasticsearch and Kibana in final architecture | TBD | Core-pipeline stability and demonstrated analytical value |
 

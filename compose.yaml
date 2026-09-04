@@ -11,9 +11,13 @@ x-spark-common: &spark-common
     AWS_REGION: us-east-1
     AWS_DEFAULT_REGION: us-east-1
     PYSPARK_PYTHON: python3
+    PYTHONPATH: /opt/project/src
   volumes:
     - ./docker/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
     - ./scripts:/opt/project/scripts:ro
+    - ./src:/opt/project/src:ro
+    - ./tests:/opt/project/tests:ro
+    - ./data/silver:/opt/project/output
   networks:
     - data-platform
 
@@ -105,7 +109,7 @@ services:
       - --cores
       - "2"
       - --memory
-      - 1g
+      - 2g
       - --webui-port
       - "8081"
       - spark://spark-master:7077
