@@ -2,8 +2,9 @@
 
 ## Current Phase
 
-Phase 5A leakage-safe modeling features are complete and validated. Train/test
-splitting, modeling, Gold outputs, Elasticsearch, and Kibana have not started.
+Phase 5B chronological splits and non-ML forecast baselines are complete and
+validated. ML training, Gold outputs, Elasticsearch, and Kibana have not
+started.
 
 ## Completed and Validated
 
@@ -45,6 +46,11 @@ splitting, modeling, Gold outputs, Elasticsearch, and Kibana have not started.
 - Feature set A contains only 13 demand/calendar predictors. Feature set B adds only the seven approved forecast variables and their weather-related availability indicators.
 - Missing values were preserved: 43,438 rows lack at least one demand-history feature, 27,972 have at least one weather predictor missing, and 1,872,866 rows satisfy the future paired-evaluation completeness flag.
 - Six focused Phase 5A Spark tests passed. The modeling feature path contains 37 objects totaling 90,690,988 bytes, including `_SUCCESS`.
+- Chronological local-time splits are frozen: train `[2025-01-01, 2025-09-01)`, validation `[2025-09-01, 2025-11-01)`, and test `[2025-11-01, 2026-01-01)`, with zero split overlap or key duplication.
+- The single future A/B comparison population contains 1,228,770 train rows, 325,008 validation rows, and 319,088 frozen test rows; no imputation or full feature-data duplication was performed.
+- Validation overall MAE/RMSE are 39.748108/75.011838 for persistence, 21.330961/44.829499 for previous-day seasonal naive, and 15.122268/29.725824 for previous-week seasonal naive.
+- Previous-week seasonal naive was selected using validation MAE only. Its reported test MAE/RMSE are 20.991755/43.118488 and were not used for selection.
+- All baseline source timestamps were at or before cutoff, target demand was not a predictor, and seven focused Phase 5B Spark tests passed.
 
 ## Open Blockers
 
@@ -52,11 +58,11 @@ splitting, modeling, Gold outputs, Elasticsearch, and Kibana have not started.
 
 ## Decisions Awaiting Evidence
 
-- Final train-time treatment of preserved demand-history and archived-forecast gaps.
+- Whether a secondary analysis should include incomplete predictor rows; the primary paired population is frozen.
 - Final ML algorithms after baselines and feasibility evidence.
 - Whether Elasticsearch and Kibana remain in the final architecture.
 
 ## Next Action
 
-Await explicit authorization for the next phase. Do not start train/test
-splitting, ML, Gold, Elasticsearch, or Kibana.
+Await explicit authorization for the next phase. Do not start ML training,
+hyperparameter tuning, Gold, Elasticsearch, or Kibana.

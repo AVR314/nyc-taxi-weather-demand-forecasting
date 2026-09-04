@@ -174,3 +174,27 @@ the approved 74 zones and available targets, preserves horizons separately,
 does not impute missing history or weather, and exposes a paired-evaluation
 eligibility flag. Measured results are in
 `docs/modeling_features_validation.md`.
+
+## Phase 5B chronological splits and baselines
+
+Run the focused split/baseline tests:
+
+```powershell
+docker compose --env-file .env run --rm --no-deps spark-master /opt/spark/bin/spark-submit --master "local[2]" /opt/project/tests/test_forecast_baselines.py
+```
+
+Then use the existing Silver feature dataset to evaluate the three non-ML
+baselines and persist the compact protocol manifest:
+
+```powershell
+docker compose --env-file .env up --detach minio minio-init spark-master spark-worker
+docker compose --env-file .env exec -T spark-master /opt/spark/bin/spark-submit --master spark://spark-master:7077 --driver-memory 2g --executor-memory 2g --conf spark.cores.max=2 /opt/project/src/forecast_baselines/job.py
+```
+
+The fixed `America/New_York` half-open splits are train `[2025-01-01,
+2025-09-01)`, validation `[2025-09-01, 2025-11-01)`, and test `[2025-11-01,
+2026-01-01)`. Both future feature sets use the single population where
+`paired_evaluation_eligible` is true. No imputation, random splitting, feature
+data duplication, or ML training occurs. The manifest is written to
+`s3a://bigdata/silver/manifests/chronological_splits_baselines_report.json`;
+measured results are in `docs/chronological_splits_baselines_validation.md`.

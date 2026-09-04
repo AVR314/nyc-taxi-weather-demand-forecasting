@@ -37,6 +37,10 @@
 | Modeling feature sets | A is demand/calendar only; B is the identical A columns plus the seven forecasts, per-variable missing flags, any-weather-missing, and source-response availability |
 | Trailing demand variability | Include population standard deviation over the complete 24-hour window ending at cutoff; leave it missing when any window hour is unavailable |
 | Paired evaluation population flag | Mark a row eligible only when every demand-history feature and every weather predictor is present; defer actual row selection until model evaluation |
+| Chronological split protocol | Use target local time in `America/New_York`: train `[2025-01-01, 2025-09-01)`, validation `[2025-09-01, 2025-11-01)`, and frozen test `[2025-11-01, 2026-01-01)` for every zone, horizon, and feature set; never random split |
+| Primary A/B comparison population | Use exactly `paired_evaluation_eligible == true` for both feature sets without imputation; preserve excluded-row reasons by split and horizon |
+| Baseline selection rule | Select by overall validation MAE only; RMSE is secondary and test metrics cannot affect selection or future design |
+| Selected non-ML baseline | Previous-week seasonal naive, selected from validation MAE 15.122268; the test set remains frozen and its results were not used for selection |
 
 ## Evidence and Trade-offs
 
@@ -59,12 +63,14 @@
 | Weather missingness in Silver | Of 131,400 required records, 130,680 have source responses, 720 arise from unavailable runs, and 1,890 have at least one missing predictor. | Complete expected keys plus missingness flags preserve join cardinality without imputation or observed-weather substitution. |
 | Leakage-safe modeling features | The 74-zone feature build produced 1,944,276 rows: 648,092 per horizon. All audited source timestamps were at or before cutoff, rolling-window end violations and duplicate keys were zero, and feature set B differs from A only by weather-related columns. | Source-time audit columns increase Silver size, but make temporal claims directly testable. |
 | Missing-feature preservation | 43,438 rows lack at least one demand-history feature, 27,972 have a missing weather predictor, and 1,872,866 satisfy the paired-evaluation flag. No missing value was imputed or silently excluded from the persisted feature data. | Keeping all eligible-target rows preserves evidence for a later, explicitly approved missing-data strategy. |
+| Fixed split populations | Train has 1,228,770 paired rows, validation 325,008, and test 319,088. Exclusions total 65,712/0/5,698 respectively; reasons are preserved independently and exclusively in the Silver manifest. | A random split would inflate similarity across time and cannot represent forward forecasting. The chronological split leaves only eight months for fitting but protects temporal validity. |
+| Baseline validation evidence | Overall validation MAE/RMSE were 39.748108/75.011838 for persistence, 21.330961/44.829499 for previous-day naive, and 15.122268/29.725824 for previous-week naive. | Persistence is competitive at 1h but degrades sharply with horizon; the seasonal baseline is a stronger overall threshold for future ML. |
 
 ## Evidence-Dependent Decisions
 
 | Topic | Status | Evidence needed |
 |---|---|---|
-| Final training treatment of missing predictors | TBD | Phase 5A preserves values and flags and measures the 1,872,866-row complete paired population; select exclusion/imputation/model-native handling only with the split and modeling design |
+| Secondary treatment of incomplete predictor rows | TBD | Primary A/B evaluation is frozen to the complete paired population; decide whether a separately labeled secondary analysis adds value without contaminating the primary comparison |
 | Final ML algorithms | TBD | Baseline results, data scale, interpretability, and validation evidence |
 | Elasticsearch and Kibana in final architecture | TBD | Core-pipeline stability and demonstrated analytical value |
 
