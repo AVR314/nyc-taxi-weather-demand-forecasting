@@ -45,7 +45,7 @@ excluded from the final architecture (see Closed Decisions).
 - Five focused synthetic Spark tests passed, and the full Silver inventory contains 85 data objects totaling 1,516,380,422 bytes before the validation report.
 - The approved 74-zone modeling scope contains 1,944,720 candidates; 444 unavailable DST targets were explicitly excluded and 1,944,276 feature rows were persisted, exactly 648,092 per horizon.
 - Zone-specific cutoff, lag, local previous-day/week, trailing mean, and trailing 24-hour standard-deviation features were built without target demand or future timestamps; all source-time and rolling-window audits passed with zero violations.
-- Feature set A contains only 13 demand/calendar predictors. Feature set B adds only the seven approved forecast variables and their weather-related availability indicators.
+- Phase 5A's feature set A contained 13 demand/calendar predictors (9 demand-history + 4 calendar); feature set B added only the seven approved forecast variables and their weather-related availability indicators. Phase 5C later added Taxi Zone identity (`location_id`) symmetrically to both A and B, giving 14 final original predictive inputs before one-hot encoding.
 - Missing values were preserved: 43,438 rows lack at least one demand-history feature, 27,972 have at least one weather predictor missing, and 1,872,866 rows satisfy the future paired-evaluation completeness flag.
 - Six focused Phase 5A Spark tests passed. The modeling feature path contains 37 objects totaling 90,690,988 bytes, including `_SUCCESS`.
 - Chronological local-time splits are frozen: train `[2025-01-01, 2025-09-01)`, validation `[2025-09-01, 2025-11-01)`, and test `[2025-11-01, 2026-01-01)`, with zero split overlap or key duplication.
