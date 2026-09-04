@@ -15,7 +15,10 @@
 | AI category | Machine learning / predictive forecasting |
 | Raw weather format | JSON |
 | Data architecture | Bronze / Silver / Gold |
-| Study period | Calendar year 2025 (2025-01-01 through 2025-12-31) |
+| Study period | Calendar year 2025 in `America/New_York`: local start inclusive `2025-01-01T00:00:00`, local end exclusive `2026-01-01T00:00:00` |
+| Canonical join axis | UTC instants; the local modeling year maps to `[2025-01-01T05:00Z, 2026-01-01T05:00Z)` |
+| TLC timestamp convention | Treat timezone-naive values as `America/New_York` wall time as an explicit modeling convention, not a TLC-documented source fact |
+| DST anomaly handling | Quarantine nonexistent spring-forward and ambiguous fall-back taxi wall times; never shift or guess a fold |
 | Weather provider | Open-Meteo |
 | Forecast-weather source | ECMWF IFS Single Runs with a conservative six-hour publication lag |
 | Observed-weather role | Reference/diagnostic only; not a substitute for ex-ante predictors |
@@ -40,7 +43,9 @@
 | One Spark master and one worker | The standalone worker executed the validated S3A round-trip job after both clean startup and service restart. This is the smallest cluster shape that exercises remote executor scheduling rather than driver-only local mode. | Local mode would use fewer containers but would not validate worker execution; adding more workers would add no Phase 2 evidence. |
 | Hadoop 3.3.4 S3A dependency set | The official Spark 3.5.7 image bundles Hadoop client 3.3.4. Matching `hadoop-aws` 3.3.4 and its AWS SDK bundle 1.12.262 successfully wrote and read Parquet through MinIO. | Runtime package resolution is smaller initially but depends on mutable local caches and network access on every run. The custom image is larger because the SDK bundle is embedded. |
 | One MinIO bucket with layer prefixes | The initializer created `bigdata` plus seven idempotent marker-backed prefixes, and MinIO readiness was checked before Spark startup. | Separate buckets can provide stronger policy boundaries but add configuration without a demonstrated local-project need. |
-| Preserve archived-forecast gaps | Eight of 1,461 required ECMWF run positions were unavailable from the provider. Their responses are retained, and 9,810 missing predictor slots across 136 target hours are reported by run, target hour, horizon, point, and variable. | Imputation or observed-weather substitution would hide source limitations or violate the ex-ante research design; any modeling treatment requires Phase 4 evidence. |
+| Preserve archived-forecast gaps | Eight of 1,462 required ECMWF run positions were unavailable from the provider. Their responses are retained, and 9,810 missing predictor slots across 136 target hours are reported by run, target hour, horizon, point, and variable. | Imputation or observed-weather substitution would hide source limitations or violate the ex-ante research design; any modeling treatment requires Phase 4 evidence. |
+| Local modeling-year time axis | TLC officially defines pickup time as when the meter was engaged, but its page and data dictionary provide no timezone/offset, and the Parquet timestamp is timezone-naive. NYC civil time is the relevant demand calendar, so `America/New_York` is declared as the reproducible modeling convention and converted to UTC for weather joins. | Treating naive values as UTC would shift local demand patterns by four or five hours. The local convention is evidence-limited and must remain explicit. |
+| DST quarantine | In 2025 New York skips local 02:00 on 9 March and repeats local 01:00 on 2 November. A naive timestamp cannot distinguish the repeated folds. | Shifting nonexistent values or choosing a fold fabricates timing; quarantine preserves uncertainty but removes affected taxi records/targets from modeling. |
 
 ## Evidence-Dependent Decisions
 

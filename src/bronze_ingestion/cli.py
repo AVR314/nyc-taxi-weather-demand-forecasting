@@ -11,6 +11,7 @@ from .core import (
     MISSING_COVERAGE_KEY,
     SUMMARY_KEY,
     VALIDATION_KEY,
+    WEATHER_PLAN_VERSION,
     HttpClient,
     ObjectStore,
     build_summary,
@@ -33,6 +34,31 @@ def write_local(output_dir: Path, name: str, content: bytes) -> None:
     (output_dir / name).write_bytes(content)
 
 
+def coverage_from_summary(summary: dict) -> dict:
+    weather = summary["weather"]
+    return {
+        "generated_at": summary["generated_at"],
+        "expected_run_count": weather["expected_run_count"],
+        "present_run_count": weather["present_run_count"],
+        "unavailable_run_count": weather["unavailable_run_count"],
+        "unavailable_runs": weather["unavailable_runs"],
+        "missing_predictor_slot_count": weather["missing_predictor_slot_count"],
+        "missing_required_target_point_horizon_count": weather[
+            "missing_required_target_point_horizon_count"
+        ],
+        "missing_target_hour_count": weather["missing_target_hour_count"],
+        "missing_target_hours": weather["missing_target_hours"],
+        "by_run": weather["missing_coverage_by_run"],
+        "by_target_hour": weather["missing_coverage_by_target_hour"],
+        "by_horizon_hours": weather["missing_coverage_by_horizon_hours"],
+        "by_point": weather["missing_coverage_by_point"],
+        "by_variable": weather["missing_coverage_by_variable"],
+        "full_slot_detail_manifest_key": MANIFEST_KEY,
+        "imputation_performed": False,
+        "observed_or_reanalysis_substitution": False,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, default=Path("/output"))
@@ -45,6 +71,7 @@ def main() -> None:
     parser.add_argument("--validate-only", action="store_true")
     parser.add_argument("--deep-verify", action="store_true")
     parser.add_argument("--finalize-missing-coverage", action="store_true")
+    parser.add_argument("--update-weather-plan", action="store_true")
     args = parser.parse_args()
 
     store = ObjectStore()
@@ -64,10 +91,14 @@ def main() -> None:
                 entry.update(
                     summarize_weather_payload(store.get_bytes(response_key), run, required_targets)
                 )
+                entry["weather_plan_version"] = WEATHER_PLAN_VERSION
+                entry["required_target_horizon_pairs"] = len(required_targets)
                 weather.append(entry)
             elif unavailable_key in previous:
                 entry = dict(previous[unavailable_key])
                 entry.update(unavailable_weather_coverage(run, required_targets))
+                entry["weather_plan_version"] = WEATHER_PLAN_VERSION
+                entry["required_target_horizon_pairs"] = len(required_targets)
                 weather_failures.append(entry)
             else:
                 raise RuntimeError(f"Weather plan artifact is missing: {run.isoformat()}")
@@ -78,25 +109,7 @@ def main() -> None:
         summary, _ = build_summary(previous_manifest, http_stats)
         summary["bronze_objects_after_ingestion"] = store.list("bronze/")
         summary_content = store.put_json(SUMMARY_KEY, summary)
-        coverage = {
-            "generated_at": summary["generated_at"],
-            "expected_run_count": summary["weather"]["expected_run_count"],
-            "present_run_count": summary["weather"]["present_run_count"],
-            "unavailable_run_count": summary["weather"]["unavailable_run_count"],
-            "unavailable_runs": summary["weather"]["unavailable_runs"],
-            "missing_predictor_slot_count": summary["weather"]["missing_predictor_slot_count"],
-            "missing_required_target_point_horizon_count": summary["weather"]["missing_required_target_point_horizon_count"],
-            "missing_target_hour_count": summary["weather"]["missing_target_hour_count"],
-            "missing_target_hours": summary["weather"]["missing_target_hours"],
-            "by_run": summary["weather"]["missing_coverage_by_run"],
-            "by_target_hour": summary["weather"]["missing_coverage_by_target_hour"],
-            "by_horizon_hours": summary["weather"]["missing_coverage_by_horizon_hours"],
-            "by_point": summary["weather"]["missing_coverage_by_point"],
-            "by_variable": summary["weather"]["missing_coverage_by_variable"],
-            "full_slot_detail_manifest_key": MANIFEST_KEY,
-            "imputation_performed": False,
-            "observed_or_reanalysis_substitution": False,
-        }
+        coverage = coverage_from_summary(summary)
         coverage_content = store.put_json(MISSING_COVERAGE_KEY, coverage)
         write_local(args.output_dir, "bronze_ingestion_summary.json", summary_content)
         write_local(args.output_dir, "weather_missing_coverage.json", coverage_content)
@@ -122,6 +135,8 @@ def main() -> None:
         return
 
     previous = entry_index(previous_manifest or {})
+    if args.update_weather_plan and previous_manifest is None:
+        raise RuntimeError(f"No existing manifest at {MANIFEST_KEY}")
     manifest = new_manifest()
     if previous_manifest is not None:
         manifest["execution_history"] = list(previous_manifest.get("execution_history", []))
@@ -130,11 +145,15 @@ def main() -> None:
     http = HttpClient()
 
     try:
-        manifest["taxi"] = ingest_taxi(store, http, previous)
-        checkpoint(store, manifest, args.output_dir)
+        if args.update_weather_plan:
+            manifest["taxi"] = list(previous_manifest["taxi"])
+            manifest["reference"] = list(previous_manifest["reference"])
+        else:
+            manifest["taxi"] = ingest_taxi(store, http, previous)
+            checkpoint(store, manifest, args.output_dir)
 
-        manifest["reference"] = ingest_references(store, http, previous)
-        checkpoint(store, manifest, args.output_dir)
+            manifest["reference"] = ingest_references(store, http, previous)
+            checkpoint(store, manifest, args.output_dir)
 
         def weather_checkpoint(results, failures):
             manifest["weather"] = results
@@ -159,8 +178,10 @@ def main() -> None:
     inventory_content = store.put_json(INVENTORY_KEY, raw_inventory)
     summary["bronze_objects_after_ingestion"] = store.list("bronze/")
     summary_content = store.put_json(SUMMARY_KEY, summary)
+    coverage_content = store.put_json(MISSING_COVERAGE_KEY, coverage_from_summary(summary))
     write_local(args.output_dir, "raw_object_inventory.json", inventory_content)
     write_local(args.output_dir, "bronze_ingestion_summary.json", summary_content)
+    write_local(args.output_dir, "weather_missing_coverage.json", coverage_content)
     print(
         f"BRONZE_INGESTION_OK taxi_months={summary['taxi']['present_month_count']} "
         f"taxi_bytes={summary['taxi']['total_bytes']} "

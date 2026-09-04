@@ -26,11 +26,14 @@ feature engineering, modeling, and other Phase 4 work have not started.
 - Clean stack shutdown removed all Phase 2 containers and the Compose network while preserving the named MinIO data volume.
 - All 12 official 2025 Yellow Taxi Parquet files were preserved unchanged in Bronze: 829,973,299 bytes total with per-object SHA-256 provenance.
 - The official Taxi Zone lookup and geographic archive were preserved unchanged in Bronze reference storage.
-- The complete 1,461-run weather plan was attempted using five-coordinate Open-Meteo ECMWF IFS Single Run requests; 1,453 raw forecast JSON responses and eight raw provider-unavailable responses were preserved.
-- Bronze contains 1,475 source objects totaling 843,310,328 bytes. Deep checksum/object verification completed with zero errors.
+- The corrected local-year weather plan contains 1,462 Open-Meteo ECMWF IFS Single Runs; 1,454 raw forecast JSON responses and eight raw provider-unavailable responses are preserved.
+- Bronze contains 1,476 source objects totaling 843,318,877 bytes. The original 1,475 objects passed deep checksum/object verification; the one added boundary response passed upload checksum verification.
 - An idempotent resume reused all 12 taxi files, both references, and all 1,461 weather outcomes without source downloads.
 - Machine-readable missing coverage identifies 9,810 required predictor slots across 136 target hours; no observed/reanalysis substitution or imputation was performed.
 - The complete six-test suite passed after the detailed missing-coverage implementation was added.
+- The time-axis audit established an explicit `America/New_York` modeling year mapped to `[2025-01-01T05:00Z, 2026-01-01T05:00Z)` and documented the TLC source's missing timezone semantics.
+- One additional boundary run (`2025-12-31T18:00Z`) was acquired successfully; all 1,461 existing weather outcomes were reused and missing coverage remained unchanged.
+- Nine focused Bronze/time-axis tests validate year boundaries, leakage-safe run planning, and the 2025 spring-forward/fall-back behavior.
 
 ## Open Blockers
 

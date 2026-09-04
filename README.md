@@ -109,6 +109,23 @@ docker compose --env-file .env --profile ingestion run --rm bronze-ingest --fina
 The machine-readable manifest, summary, raw inventory, validation report, and
 weather missing-coverage report are stored below `bronze/manifests/` in the
 `bigdata` bucket. Local working copies under `data/ingestion/` are ignored by
-Git. The completed inventory contains 1,475 raw source objects totaling
-843,310,328 bytes: 12 taxi files, 1,453 successful weather responses, eight
+Git. The completed inventory contains 1,476 raw source objects totaling
+843,318,877 bytes: 12 taxi files, 1,454 successful weather responses, eight
 preserved provider-unavailable responses, and two Taxi Zone references.
+
+### Time axis
+
+The modeling year is calendar year 2025 in `America/New_York`, treated as a
+declared project convention because TLC's timezone-naive timestamps have no
+documented timezone or offset. It maps to weather targets from
+`2025-01-01T05:00:00Z` inclusive to `2026-01-01T05:00:00Z` exclusive. The
+spring-forward nonexistent local hour and fall-back ambiguous local hour are
+quarantined rather than shifted or assigned an arbitrary fold. See
+`docs/time_axis_audit.md` for evidence and exact DST behavior.
+
+If the time-axis policy changes, update only the weather plan and acquire only
+missing boundary runs:
+
+```powershell
+docker compose --env-file .env --profile ingestion run --rm bronze-ingest --update-weather-plan
+```

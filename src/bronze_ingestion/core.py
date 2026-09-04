@@ -19,6 +19,7 @@ from typing import Any, BinaryIO, Iterable
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+from zoneinfo import ZoneInfo
 
 import boto3
 import pyarrow.parquet as pq
@@ -74,8 +75,16 @@ NYC_POINTS = (
 )
 FORECAST_HORIZONS_HOURS = (1, 3, 6)
 PUBLICATION_LAG_HOURS = 6
-TARGET_START = datetime(2025, 1, 1, 0, tzinfo=UTC)
-TARGET_END = datetime(2025, 12, 31, 23, tzinfo=UTC)
+WEATHER_PLAN_VERSION = 2
+NYC_TIMEZONE_NAME = "America/New_York"
+NYC_TIMEZONE = ZoneInfo(NYC_TIMEZONE_NAME)
+LOCAL_MODELING_YEAR_START = datetime(2025, 1, 1)
+LOCAL_MODELING_YEAR_END_EXCLUSIVE = datetime(2026, 1, 1)
+TARGET_START = LOCAL_MODELING_YEAR_START.replace(tzinfo=NYC_TIMEZONE).astimezone(UTC)
+TARGET_END_EXCLUSIVE = LOCAL_MODELING_YEAR_END_EXCLUSIVE.replace(
+    tzinfo=NYC_TIMEZONE
+).astimezone(UTC)
+TARGET_END = TARGET_END_EXCLUSIVE - timedelta(hours=1)
 
 
 def utc_now() -> str:
@@ -91,6 +100,29 @@ def sha256_stream(stream: BinaryIO) -> str:
     while chunk := stream.read(1024 * 1024):
         digest.update(chunk)
     return digest.hexdigest()
+
+
+def local_wall_time_candidates_utc(value: datetime) -> tuple[datetime, ...]:
+    """Return the real UTC instants represented by a naive NYC wall time."""
+    if value.tzinfo is not None:
+        raise ValueError("TLC wall-time conversion requires a timezone-naive datetime")
+    candidates: set[datetime] = set()
+    for fold in (0, 1):
+        candidate = value.replace(tzinfo=NYC_TIMEZONE, fold=fold).astimezone(UTC)
+        round_trip = candidate.astimezone(NYC_TIMEZONE)
+        if round_trip.replace(tzinfo=None) == value and round_trip.fold == fold:
+            candidates.add(candidate)
+    return tuple(sorted(candidates))
+
+
+def taxi_local_wall_time_to_utc(value: datetime) -> datetime:
+    """Convert an unambiguous TLC local-wall timestamp under the project policy."""
+    candidates = local_wall_time_candidates_utc(value)
+    if not candidates:
+        raise ValueError(f"nonexistent America/New_York wall time: {value.isoformat()}")
+    if len(candidates) > 1:
+        raise ValueError(f"ambiguous America/New_York wall time: {value.isoformat()}")
+    return candidates[0]
 
 
 def floor_to_ecmwf_cycle(value: datetime) -> datetime:
@@ -576,7 +608,14 @@ def unavailable_weather_coverage(
 def new_manifest() -> dict[str, Any]:
     return {
         "manifest_version": 1,
-        "study_period": {"start": TARGET_START.isoformat(), "end": TARGET_END.isoformat()},
+        "study_period": {
+            "modeling_calendar_year": 2025,
+            "local_timezone": NYC_TIMEZONE_NAME,
+            "local_start_inclusive": LOCAL_MODELING_YEAR_START.isoformat(),
+            "local_end_exclusive": LOCAL_MODELING_YEAR_END_EXCLUSIVE.isoformat(),
+            "weather_target_start_utc_inclusive": TARGET_START.isoformat(),
+            "weather_target_end_utc_inclusive": TARGET_END.isoformat(),
+        },
         "generated_at": utc_now(),
         "taxi": [],
         "weather": [],
@@ -588,11 +627,16 @@ def new_manifest() -> dict[str, Any]:
             "weather_source_nature": "historical forecast single runs; ex-ante predictors",
             "observed_or_reanalysis_predictors": False,
             "publication_lag_hours": PUBLICATION_LAG_HOURS,
+            "weather_plan_version": WEATHER_PLAN_VERSION,
             "eligibility_rule": "run_initialization_utc + 6h <= prediction_cutoff_utc",
             "forecast_horizons_hours": list(FORECAST_HORIZONS_HOURS),
             "weather_variables": list(WEATHER_VARIABLES),
             "requested_points": list(NYC_POINTS),
             "timezone": "UTC",
+            "taxi_timestamp_policy": (
+                "treat timezone-naive TLC timestamps as America/New_York wall time for modeling; "
+                "reject nonexistent and quarantine ambiguous wall times rather than guessing a fold"
+            ),
         },
     }
 
@@ -748,11 +792,13 @@ def ingest_weather(
         error_key = object_key.replace("response.json", "unavailable.json")
         reused = reusable_entry(store, previous.get(object_key), object_key=object_key)
         if reused is not None:
-            if "missing_required_predictor_slots" not in reused:
+            if reused.get("weather_plan_version") != WEATHER_PLAN_VERSION:
                 stored_content = store.get_bytes(object_key)
                 if sha256_bytes(stored_content) != reused["sha256"]:
                     raise ValueError(f"stored weather checksum mismatch: {object_key}")
                 reused.update(summarize_weather_payload(stored_content, run, required_targets))
+            reused["weather_plan_version"] = WEATHER_PLAN_VERSION
+            reused["required_target_horizon_pairs"] = len(required_targets)
             results.append(reused)
         elif (
             reused_failure := reusable_entry(
@@ -761,8 +807,10 @@ def ingest_weather(
                 object_key=error_key,
             )
         ) is not None:
-            if "missing_required_predictor_slots" not in reused_failure:
+            if reused_failure.get("weather_plan_version") != WEATHER_PLAN_VERSION:
                 reused_failure.update(unavailable_weather_coverage(run, required_targets))
+            reused_failure["weather_plan_version"] = WEATHER_PLAN_VERSION
+            reused_failure["required_target_horizon_pairs"] = len(required_targets)
             unavailable.append(reused_failure)
         else:
             if request_delay_seconds > 0:
@@ -811,6 +859,7 @@ def ingest_weather(
                         "http_status": exc.status,
                         "http_attempts": exc.attempts,
                         "provider_error": error_payload,
+                        "weather_plan_version": WEATHER_PLAN_VERSION,
                         "required_target_horizon_pairs": len(required_targets),
                         **unavailable_weather_coverage(run, required_targets),
                         "raw_object_sha256_verified": True,
@@ -862,6 +911,7 @@ def ingest_weather(
                     "http_status": 200,
                     "http_attempts": attempts,
                     "content_type": headers.get("content-type"),
+                    "weather_plan_version": WEATHER_PLAN_VERSION,
                     "required_target_horizon_pairs": len(required_targets),
                     **weather_validation,
                     "raw_object_sha256_verified": True,

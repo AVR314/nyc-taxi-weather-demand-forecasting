@@ -61,7 +61,7 @@ All fields are nullable in the Parquet schema even when the measured null count 
 | `Airport_fee` | `double` |
 | `cbd_congestion_fee` | `double` |
 
-The timestamp type has no timezone metadata. A future pipeline must explicitly confirm the TLC local-time convention, localize to `America/New_York`, and convert to UTC before weather joins.
+The timestamp type has no timezone metadata, and the official TLC page and data dictionary do not declare timezone semantics. The project therefore adopts `America/New_York` wall time as an explicit modeling convention—not a TLC source fact—and converts only unambiguous instants to UTC. See `docs/time_axis_audit.md` for the year boundary and DST quarantine policy.
 
 ## Timestamp Coverage
 

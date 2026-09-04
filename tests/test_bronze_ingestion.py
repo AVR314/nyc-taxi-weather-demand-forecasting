@@ -6,14 +6,20 @@ from datetime import UTC, datetime, timedelta
 
 from bronze_ingestion.core import (
     FORECAST_HORIZONS_HOURS,
+    LOCAL_MODELING_YEAR_END_EXCLUSIVE,
+    LOCAL_MODELING_YEAR_START,
     NYC_POINTS,
+    NYC_TIMEZONE,
     PUBLICATION_LAG_HOURS,
     TARGET_END,
+    TARGET_END_EXCLUSIVE,
     TARGET_START,
     WEATHER_VARIABLES,
     floor_to_ecmwf_cycle,
+    local_wall_time_candidates_utc,
     required_weather_plan,
     summarize_weather_payload,
+    taxi_local_wall_time_to_utc,
     weather_object_key,
     weather_request,
 )
@@ -23,9 +29,9 @@ class WeatherPlanTest(unittest.TestCase):
     def test_required_run_boundaries_and_count(self) -> None:
         plan = required_weather_plan()
         runs = list(plan)
-        self.assertEqual(len(runs), 1461)
+        self.assertEqual(len(runs), 1462)
         self.assertEqual(runs[0], datetime(2024, 12, 31, 12, tzinfo=UTC))
-        self.assertEqual(runs[-1], datetime(2025, 12, 31, 12, tzinfo=UTC))
+        self.assertEqual(runs[-1], datetime(2025, 12, 31, 18, tzinfo=UTC))
         self.assertEqual(sum(map(len, plan.values())), 8760 * len(FORECAST_HORIZONS_HOURS))
 
     def test_every_run_is_leakage_safe_and_covers_target(self) -> None:
@@ -91,6 +97,57 @@ class WeatherPayloadTest(unittest.TestCase):
 
     def test_study_period_has_8760_hours(self) -> None:
         self.assertEqual(int((TARGET_END - TARGET_START).total_seconds() / 3600) + 1, 8760)
+
+
+class TimeAxisPolicyTest(unittest.TestCase):
+    def test_local_modeling_year_maps_to_correct_utc_window(self) -> None:
+        self.assertEqual(LOCAL_MODELING_YEAR_START, datetime(2025, 1, 1))
+        self.assertEqual(LOCAL_MODELING_YEAR_END_EXCLUSIVE, datetime(2026, 1, 1))
+        self.assertEqual(TARGET_START, datetime(2025, 1, 1, 5, tzinfo=UTC))
+        self.assertEqual(TARGET_END_EXCLUSIVE, datetime(2026, 1, 1, 5, tzinfo=UTC))
+        self.assertEqual(TARGET_END, datetime(2026, 1, 1, 4, tzinfo=UTC))
+
+    def test_spring_forward_rejects_nonexistent_wall_hour(self) -> None:
+        self.assertEqual(
+            taxi_local_wall_time_to_utc(datetime(2025, 3, 9, 1, 59)),
+            datetime(2025, 3, 9, 6, 59, tzinfo=UTC),
+        )
+        self.assertEqual(local_wall_time_candidates_utc(datetime(2025, 3, 9, 2, 30)), ())
+        with self.assertRaisesRegex(ValueError, "nonexistent"):
+            taxi_local_wall_time_to_utc(datetime(2025, 3, 9, 2, 30))
+        self.assertEqual(
+            taxi_local_wall_time_to_utc(datetime(2025, 3, 9, 3, 0)),
+            datetime(2025, 3, 9, 7, 0, tzinfo=UTC),
+        )
+
+    def test_fall_back_quarantines_ambiguous_wall_hour(self) -> None:
+        candidates = local_wall_time_candidates_utc(datetime(2025, 11, 2, 1, 30))
+        self.assertEqual(
+            candidates,
+            (
+                datetime(2025, 11, 2, 5, 30, tzinfo=UTC),
+                datetime(2025, 11, 2, 6, 30, tzinfo=UTC),
+            ),
+        )
+        with self.assertRaisesRegex(ValueError, "ambiguous"):
+            taxi_local_wall_time_to_utc(datetime(2025, 11, 2, 1, 30))
+        self.assertEqual(
+            taxi_local_wall_time_to_utc(datetime(2025, 11, 2, 2, 0)),
+            datetime(2025, 11, 2, 7, 0, tzinfo=UTC),
+        )
+
+    def test_utc_axis_reflects_both_dst_transitions(self) -> None:
+        spring = [
+            datetime(2025, 3, 9, hour, tzinfo=UTC).astimezone(NYC_TIMEZONE)
+            for hour in range(5, 9)
+        ]
+        self.assertEqual([value.hour for value in spring], [0, 1, 3, 4])
+        fall = [
+            datetime(2025, 11, 2, hour, tzinfo=UTC).astimezone(NYC_TIMEZONE)
+            for hour in range(4, 8)
+        ]
+        self.assertEqual([value.hour for value in fall], [0, 1, 1, 2])
+        self.assertEqual([value.fold for value in fall], [0, 0, 1, 0])
 
 
 if __name__ == "__main__":

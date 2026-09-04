@@ -4,16 +4,17 @@ Status values: `NOT STARTED`, `IN PROGRESS`, `VALIDATED`, `BLOCKED`.
 
 | Requirement | Planned implementation | Evidence/artifact | Status |
 |---|---|---|---|
-| Real dataset | Use NYC TLC Yellow Taxi trip records and historical weather data. | All 12 official 2025 taxi files, 1,453 forecast responses, eight unavailable responses, and two references preserved in Bronze with provenance | VALIDATED |
+| Real dataset | Use NYC TLC Yellow Taxi trip records and historical weather data. | All 12 official 2025 taxi files, 1,454 forecast responses, eight unavailable responses, and two references preserved in Bronze with provenance | VALIDATED |
 | Working ETL or ELT | Ingest raw taxi Parquet and weather JSON, validate and transform with Spark, and publish Silver/Gold outputs. | Reproducible, resumable Bronze ingestion and machine-readable manifests validated; Silver/Gold transformations remain | IN PROGRESS |
-| Semi-structured or unstructured data | Ingest raw hourly archived weather forecasts as JSON. | 1,453 successful JSON responses and eight provider-error JSON responses preserved unchanged | VALIDATED |
+| Semi-structured or unstructured data | Ingest raw hourly archived weather forecasts as JSON. | 1,454 successful JSON responses and eight provider-error JSON responses preserved unchanged | VALIDATED |
 | Required Big Data technology | Use MinIO object storage for Bronze, Silver, and Gold layers. | `compose.yaml`; `bigdata` bucket and seven prefixes initialized; S3A Parquet round trip passed before and after restart | VALIDATED |
 | Meaningful transformation | Clean records, report rejections, build Zone × Hour demand, join weather, and engineer leakage-safe features. | Spark transformations, quality reports, and tests | NOT STARTED |
 | Repository or storage for results | Store predictions, metrics, and analytical outputs in MinIO Gold; evaluate Elasticsearch as a downstream store. | Gold object inventory and, if retained, Elasticsearch indexes | NOT STARTED |
 | Results and insights | Analyze forecast accuracy by horizon and the incremental value of weather. | Metrics tables, plots, and evidence-based findings | NOT STARTED |
 | AI capability on project data | Train and evaluate demand-forecasting models using project-derived features. | Training code, saved configuration, predictions, and metrics | NOT STARTED |
-| Source code | Maintain reproducible pipeline, validation, modeling, and test code in Git. | Feasibility scripts, infrastructure smoke tests, Bronze ingestion package, and six passing tests | IN PROGRESS |
+| Source code | Maintain reproducible pipeline, validation, modeling, and test code in Git. | Feasibility scripts, infrastructure smoke tests, Bronze ingestion package, and focused time-axis tests | IN PROGRESS |
 | Reproducible containerized infrastructure | Keep Spark, Java, Hadoop, S3A, and MinIO versioned and runnable without host installations. | `compose.yaml`; `docker/spark/Dockerfile`; pinned versions; clean startup/restart/shutdown validation | VALIDATED |
+| Taxi/weather time alignment | Define the modeling calendar, convert local civil time to UTC reproducibly, and handle DST without silent coercion. | `docs/time_axis_audit.md`; conversion helpers; nine focused time-axis/Bronze tests | VALIDATED |
 | README with run instructions | Expand the README with prerequisites, setup, execution, validation, and troubleshooting steps. | Phase 2 infrastructure and Phase 3 build, test, resumable ingestion, and missing-coverage commands in `README.md` | IN PROGRESS |
 | 1–2 page design document | Summarize architecture, data flow, modeling, validation, and trade-offs. | Final design document | NOT STARTED |
 | Architecture diagram | Diagram sources, processing, storage layers, modeling, and outputs. | Version-controlled diagram and exported image/PDF | NOT STARTED |
